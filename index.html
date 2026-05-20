@@ -397,8 +397,9 @@ html_content = """<!DOCTYPE html>
                 // Determine difficulty tier based on score
                 let difficultyLevel = Math.floor(score / 50);
                 
-                // Width grows slightly with difficulty
-                this.w = 20 + Math.random() * (15 + difficultyLevel * 5);
+                // --- MODIFIED: Thinner obstacles ---
+                // Width is now much thinner (between 12 and 20 pixels) and less random
+                this.w = 12 + Math.random() * 8; 
                 
                 // Height starts lower for early game, increases as score gets higher
                 let baseHeight = 15 + Math.random() * 10; // Low base height (15 to 25)
@@ -414,10 +415,10 @@ html_content = """<!DOCTYPE html>
             draw() {
                 ctx.fillStyle = '#ef4444'; // Red obstacle
                 ctx.fillRect(this.x, this.y, this.w, this.h);
-                // Detail lines (give it a prickly look)
+                // Detail lines (adjusted for thinner width)
                 ctx.fillStyle = '#991b1b';
-                ctx.fillRect(this.x + 4, this.y, 4, this.h);
-                ctx.fillRect(this.x + this.w - 8, this.y, 4, this.h);
+                ctx.fillRect(this.x + 2, this.y, 2, this.h);
+                ctx.fillRect(this.x + this.w - 4, this.y, 2, this.h);
             }
         }
 
