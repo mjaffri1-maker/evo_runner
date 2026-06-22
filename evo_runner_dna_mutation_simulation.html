@@ -1,0 +1,276 @@
+<!-- ... existing code ... -->
+        // Game State
+        let gameState = 'START'; // START, PLAYING, MUTATING, GAMEOVER
+        let score = 0;
+        let speed = 4; // Start slower
+        let frameCount = 0;
+        let mutationPause = 0;
+        let obstacleDelay = 60; // NEW: Controls delay between single obstacles
+
+        // Genetics State
+<!-- ... existing code ... -->
+        function drawClouds(x, y) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'; // Solid white for cartoon look
+            ctx.strokeStyle = '#94a3b8'; // Light gray outline
+            ctx.lineWidth = 3;
+            
+            ctx.beginPath();
+            ctx.roundRect(x + 50, y + 20, 100, 30, 15); 
+            ctx.roundRect(x + 70, y + 10, 60, 40, 20); 
+            ctx.fill(); ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.roundRect(x + 300, y + 50, 120, 40, 20); 
+            ctx.roundRect(x + 320, y + 35, 80, 50, 25); 
+            ctx.fill(); ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.roundRect(x + 600, y + 15, 90, 30, 15); 
+            ctx.fill(); ctx.stroke();
+        }
+
+        function drawMountains(x, y) {
+            ctx.fillStyle = '#334155'; // Brighter mountain
+            ctx.strokeStyle = '#0f172a'; // Heavy outline
+            ctx.lineWidth = 4;
+            ctx.lineJoin = 'round'; // Soften the mountain peaks
+
+            ctx.beginPath();
+            ctx.moveTo(x, y + 100); ctx.lineTo(x + 100, y); ctx.lineTo(x + 200, y + 100);
+            ctx.fill(); ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(x + 150, y + 100); ctx.lineTo(x + 250, y + 20); ctx.lineTo(x + 350, y + 100);
+            ctx.fill(); ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(x + 400, y + 100); ctx.lineTo(x + 550, y - 30); ctx.lineTo(x + 700, y + 100);
+            ctx.fill(); ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(x + 650, y + 100); ctx.lineTo(x + 750, y + 40); ctx.lineTo(x + 850, y + 100);
+            ctx.fill(); ctx.stroke();
+        }
+
+        function drawGroundLines(x, y) {
+<!-- ... existing code ... -->
+        const layers = [
+            new ParallaxLayer(drawClouds, 0.2, 20),
+            new ParallaxLayer(drawMountains, 0.5, 200),
+            new ParallaxLayer(drawGroundLines, 1.0, 315)
+        ];
+
+        // --- 4. GAME ENTITIES ---
+        class Dino {
+            constructor() { this.reset(); }
+<!-- ... existing code ... -->
+                this.w = w; this.h = h;
+                if (gameState === 'PLAYING' && !this.isJumping && !this.isDucking) {
+                    this.walkCycle += 0.2 * (speed / 5);
+                } else {
+                    this.walkCycle = 0;
+                }
+            }
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                if (activeEffects.invulnerableTimer > 0) {
+                    if (Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5;
+                }
+                const bodyColor = activeEffects.invulnerableTimer > 0 ? '#60a5fa' : '#10b981';
+                
+                // Cartoon outline settings
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#022c22'; // Dark green heavy outline
+                ctx.lineJoin = 'round';
+                
+                let legAngle = Math.sin(this.walkCycle) * 0.6;
+                let armAngle = Math.cos(this.walkCycle) * 0.4;
+                if(this.isJumping) { legAngle = -0.5; armAngle = -0.5; }
+                if(this.isDucking) { legAngle = 0; armAngle = 0; }
+                let u = this.w / 40;
+
+                // --- Draw Back Leg ---
+                ctx.save();
+                ctx.translate(10 * u, this.h * 0.8);
+                ctx.rotate(-legAngle);
+                ctx.fillStyle = '#059669'; // Slightly darker for back leg
+                ctx.beginPath();
+                ctx.roundRect(-4 * u, 0, 8 * u, 12 * u + (this.h * 0.2), 4); 
+                ctx.roundRect(-4 * u, 10 * u + (this.h * 0.2), 14 * u, 6 * u, 3);
+                ctx.fill(); ctx.stroke();
+                ctx.restore();
+
+                // --- Draw Tail ---
+                ctx.fillStyle = bodyColor;
+                ctx.beginPath();
+                ctx.moveTo(4 * u, this.h * 0.4);
+                ctx.lineTo(-20 * u, this.h * 0.75);
+                ctx.lineTo(4 * u, this.h * 0.9);
+                ctx.fill(); ctx.stroke();
+
+                // --- Draw Body ---
+                ctx.beginPath();
+                ctx.roundRect(0, 0, this.w, this.h * 0.9, 8); // Rounded body
+                ctx.fill(); ctx.stroke();
+                
+                // --- Draw Head ---
+                if (!this.isDucking) {
+                    // Snout
+                    ctx.beginPath();
+                    ctx.roundRect(this.w * 0.4, -14 * u, 30 * u, 24 * u, 10);
+                    ctx.fill(); ctx.stroke();
+                    
+                    // Cute Cartoon Eye
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.ellipse(this.w * 0.65, -6 * u, 6 * u, 8 * u, 0, 0, Math.PI * 2);
+                    ctx.fill(); ctx.stroke();
+                    
+                    // Pupil
+                    ctx.fillStyle = 'black';
+                    ctx.beginPath();
+                    ctx.arc(this.w * 0.65 + (2*u), -6 * u, 3 * u, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Little smile
+                    ctx.strokeStyle = '#064e3b';
+                    ctx.beginPath();
+                    ctx.arc(this.w * 0.9, 2 * u, 4 * u, 0, Math.PI * 0.8);
+                    ctx.stroke();
+                }
+
+                // --- Draw Front Arm ---
+                ctx.fillStyle = bodyColor;
+                ctx.save();
+                ctx.translate(this.w * 0.8, this.h * 0.4);
+                ctx.rotate(armAngle);
+                ctx.strokeStyle = '#022c22';
+                ctx.beginPath();
+                ctx.roundRect(0, 0, 6 * u, 12 * u, 3); // Thicker, rounded arm
+                ctx.fill(); ctx.stroke();
+                ctx.restore();
+
+                // --- Draw Front Leg ---
+                ctx.save();
+                ctx.translate(25 * u, this.h * 0.8);
+                ctx.rotate(legAngle);
+                ctx.beginPath();
+                ctx.roundRect(-4 * u, 0, 8 * u, 12 * u + (this.h * 0.2), 4); 
+                ctx.roundRect(-4 * u, 10 * u + (this.h * 0.2), 14 * u, 6 * u, 3); 
+                ctx.fill(); ctx.stroke();
+                ctx.restore();
+
+                ctx.restore();
+            }
+        }
+
+        class Obstacle {
+            constructor() {
+                let difficultyLevel = Math.floor(score / 50);
+                // Slightly wider to accommodate cartoon cactus shape
+                this.w = 18 + Math.random() * 8; 
+                let baseHeight = 20 + Math.random() * 10; 
+                let heightIncrease = difficultyLevel * 8; 
+                this.h = Math.min(65, baseHeight + heightIncrease); 
+                this.x = canvas.width;
+                this.y = 300 - this.h;
+                this.passed = false;
+            }
+            update() { this.x -= speed; }
+            draw() {
+                ctx.fillStyle = '#22c55e'; // Cartoon green
+                ctx.strokeStyle = '#022c22'; // Heavy dark green outline
+                ctx.lineWidth = 3;
+
+                // Main trunk
+                ctx.beginPath();
+                ctx.roundRect(this.x, this.y, this.w, this.h + 5, [15, 15, 0, 0]); // Super rounded top
+                ctx.fill(); ctx.stroke();
+
+                // Left Arm
+                ctx.beginPath();
+                ctx.roundRect(this.x - 10, this.y + (this.h * 0.3), 12, 12, [8, 0, 0, 8]);
+                ctx.fill(); ctx.stroke();
+                ctx.beginPath();
+                ctx.roundRect(this.x - 10, this.y + (this.h * 0.3) - 10, 8, 15, [5, 5, 0, 0]);
+                ctx.fill(); ctx.stroke();
+
+                // Right Arm (slightly higher)
+                ctx.beginPath();
+                ctx.roundRect(this.x + this.w - 2, this.y + (this.h * 0.5), 12, 12, [0, 8, 8, 0]);
+                ctx.fill(); ctx.stroke();
+                ctx.beginPath();
+                ctx.roundRect(this.x + this.w + 2, this.y + (this.h * 0.5) - 12, 8, 16, [5, 5, 0, 0]);
+                ctx.fill(); ctx.stroke();
+
+                // Decorative prickles
+                ctx.fillStyle = '#064e3b';
+                ctx.fillRect(this.x + 6, this.y + 10, 2, 4);
+                ctx.fillRect(this.x + this.w - 8, this.y + 25, 2, 4);
+                ctx.fillRect(this.x + 5, this.y + 40, 2, 4);
+            }
+        }
+
+        class Mutagen {
+            constructor() {
+<!-- ... existing code ... -->
+            update() { this.x -= speed; }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                ctx.fillStyle = this.type === 'Blue' ? '#3b82f6' : '#ef4444';
+                ctx.fill();
+                
+                // Cartoon outline
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                
+                // Cute cartoon highlight bubble
+                ctx.fillStyle = 'rgba(255,255,255,0.8)';
+                ctx.beginPath();
+                ctx.ellipse(this.x - 4, this.y - 4, 5, 3, Math.PI / 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(this.x - 8, this.y + 2, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        let dino = new Dino();
+<!-- ... existing code ... -->
+        function resetGame() {
+            dino.reset();
+            obstacles = [];
+            mutagens = [];
+            score = 0;
+            speed = 4; 
+            frameCount = 0;
+            obstacleDelay = 60; // Reset obstacle spawning timer
+            
+            currentDNA = WILD_TYPE_DNA;
+<!-- ... existing code ... -->
+                speed = 4 + (difficultyLevel * 0.75);
+
+                layers.forEach(layer => layer.update(speed));
+                dino.update();
+
+                // --- Single Obstacle Spawning Logic ---
+                if (obstacles.length === 0) {
+                    if (obstacleDelay > 0) {
+                        obstacleDelay--;
+                    } else {
+                        obstacles.push(new Obstacle());
+                        // Calculate next delay based on difficulty
+                        let spawnFreq = Math.max(30, 80 - (difficultyLevel * 10));
+                        obstacleDelay = spawnFreq + Math.floor(Math.random() * 40);
+                    }
+                }
+
+                if (frameCount % 300 === 0 && Math.random() > 0.3) {
+                    mutagens.push(new Mutagen());
+                }
+
+                for (let i = obstacles.length - 1; i >= 0; i--) {
+<!-- ... existing code ... -->
